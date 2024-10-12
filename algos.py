@@ -49,23 +49,46 @@ def random_walk(graph):
 
     return walked_edges
 
-def visualize_graph(G):
-    pos = nx.spring_layout(G)  # You can use other layouts as well
+def visualize_graph(G, title="Graph Visualization", seed=42):
+    plt.figure(figsize=(18,8), facecolor='#5e5e5e')
+    ax = plt.gca()
+    ax.set_facecolor('#5e5e5e')
+    pos = nx.spring_layout(G, weight=None, seed=seed)  # You can use other layouts as well
+
+    # Check if edges have weights
+    if nx.get_edge_attributes(G, 'weight'):
+        # If weights exist, use them for edge coloring
+        edge_weights = np.array([G[u][v].get('weight', 1) for u, v in G.edges()])
+        cmap = plt.cm.plasma
+        norm_weights = (edge_weights - edge_weights.min()) / (edge_weights.max() - edge_weights.min())
+        min_alpha = 0.1  # Minimum alpha for visibility
+        alphas = norm_weights * (1 - min_alpha) + min_alpha
+        edge_colors = [cmap(weight) for weight in norm_weights]
+        edge_colors_with_alpha = [(r, g, b, a) for (r, g, b, _), a in zip(edge_colors, alphas)] # Use weights for edge coloring
+    else:
+        # If no weights, set all edges to the same color (e.g., gray)
+        edge_colors_with_alpha = 'blue'
+        edge_weights = None  # No weights present
 
     # Draw edges
-    nx.draw_networkx_edges(G, pos, edge_color='black', width=1.5)
+    nx.draw_networkx_edges(
+        G,
+        pos,
+        arrowsize=10,
+        edge_color=edge_colors_with_alpha,
+        width=2,
+    )
 
     # Draw nodes
-    nx.draw_networkx_nodes(G, pos, node_color='skyblue', node_size=700)
-
-    # Draw node labels
-    node_labels = {node: node for node in G.nodes()}
-    nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=8)
+    nx.draw_networkx_nodes(G, pos, node_color='skyblue', node_size=min(5000/G.number_of_nodes(), 200))
     
-    edge_labels = nx.get_edge_attributes(G, 'weight')
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_color='red', font_size=8)
-
-    plt.title("Graph Visualization")
+    # If edge weights exist, create colorbar based on scalar values (not RGBA tuples)
+    if edge_weights is not None:
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=edge_weights.min(), vmax=edge_weights.max()))
+        sm.set_array([])  # Create an empty array for the ScalarMappable
+        plt.colorbar(sm, label='Edge Weight', orientation='vertical', fraction=0.046, pad=0.04)
+    
+    plt.title(title)
     plt.show()
     
 def add_weights_to_edges_from_dict(graph, weights_dict):
