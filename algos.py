@@ -133,3 +133,14 @@ def probabilistic_walk(graph):
         current_node = next_node
 
     return walked_edges
+
+def generate_sf_graph(n):
+    G = nx.scale_free_graph(n=n,alpha=.5,beta=.25,gamma=.25).to_undirected()
+    G.remove_edges_from(list(nx.selfloop_edges(G)))
+    G = nx.Graph(G)
+    G = nx.convert_node_labels_to_integers(G)
+    components = list(nx.connected_components(G))
+    while len(components) > 1:
+        G.add_edge(components[0].pop(), components[1].pop())
+        components = list(nx.connected_components(G))
+    return G
