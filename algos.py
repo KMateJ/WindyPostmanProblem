@@ -2,6 +2,8 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
 import random
+import copy
+
 
 def generate_random_graph(node_count, connectivity):
     G = nx.Graph()
@@ -144,3 +146,56 @@ def generate_sf_graph(n):
         G.add_edge(components[0].pop(), components[1].pop())
         components = list(nx.connected_components(G))
     return G
+
+
+def get_highest_degree_node(graph):
+    """Return the node with the highest degree in the graph."""
+    degrees = dict(graph.degree())
+    return max(degrees, key=degrees.get)
+
+def initialize_edge_weights(graph):
+    """Set all edge weights to 0 for visualization."""
+    for u, v in graph.edges():
+        graph[u][v]['weight'] = 0
+
+
+def multiple_probabilistic_walks(graph, num_walks, steps):
+    """Simulate multiple random walks on the weighted graph."""
+    walked_edges_per_step = [[] for _ in range(steps)]  # Store walked edges per step
+    edge_step_count = {edge: 0 for edge in graph.edges()}  # Track how many times each edge is stepped on
+    starting_node = get_highest_degree_node(graph)  # Start walks from the highest degree node
+
+    for _ in range(num_walks):
+        current_node = starting_node
+        
+        for i in range(steps):
+            neighbors = list(graph.neighbors(current_node))
+            weights = [graph[current_node][neighbor].get('weight', 1) for neighbor in neighbors]
+
+            # Normalize weights to create probabilities
+            probabilities = [weight / sum(weights) if sum(weights) != 0 else 1 / len(weights) for weight in weights]
+            next_node = random.choices(neighbors, weights=probabilities)[0]
+            edge = (min(current_node, next_node), max(current_node, next_node))
+
+            walked_edges_per_step[i].append(edge)
+            edge_step_count[edge] += 1  # Update step count for the edge
+
+
+            current_node = next_node
+
+    v_graph = copy.deepcopy(graph)
+    print(v_graph)
+    initialize_edge_weights(v_graph)
+    snapshots = []
+    for  edges_in_step in walked_edges_per_step:
+        for edge in edges_in_step:
+            u, v = edge
+            v_graph[u][v]['weight'] += 1 
+        snapshot = copy.deepcopy(v_graph)
+        snapshots.append(snapshot)
+        
+    for i in range (90):
+        snapshot = copy.deepcopy(snapshots[-1])
+        snapshots.append(snapshot)
+    
+    return snapshots 
