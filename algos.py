@@ -96,9 +96,9 @@ def visualize_graph(G, title="Graph Visualization", seed=42):
 def add_weights_to_edges_from_dict(graph, weights_dict):
     for edge, weight in weights_dict.items():
         if graph.has_edge(*edge):
-            graph[edge[0]][edge[1]]['weight'] = np.sqrt( np.log(1/weight)) *10
+            graph[edge[0]][edge[1]]['weight'] = (1/max(weight,0.0001))
         elif graph.has_edge(*reversed(edge)):
-            graph[reversed(edge)[0]][reversed(edge)[1]]['weight'] = np.sqrt( np.log(1/weight)) *10
+            graph[reversed(edge)[0]][reversed(edge)[1]]['weight'] = (1/max(weight,0.0001))
         else:
             print(f"Edge {edge} not found in the graph.")
             
