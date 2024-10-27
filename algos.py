@@ -3,6 +3,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 import copy
+import matplotlib.animation as animation
+import matplotlib as mpl
+from matplotlib.animation import FuncAnimation, PillowWriter
+import copy
+import random
+import importlib
 
 
 def generate_random_graph(node_count, connectivity):
@@ -199,3 +205,84 @@ def multiple_probabilistic_walks(graph, num_walks, steps):
         snapshots.append(snapshot)
     
     return snapshots 
+
+
+def compute_max_weights(snapshots):
+    """Compute the maximum weight for each edge across all snapshots."""
+    max_weights = {}
+    for snapshot in snapshots:
+        for u, v, data in snapshot.edges(data=True):
+            edge = (min(u, v), max(u, v))
+            weight = data.get('weight', 0)
+            if edge not in max_weights:
+                max_weights[edge] = weight
+            else:
+                max_weights[edge] = max(max_weights[edge], weight)
+    return max_weights
+
+
+def visualize_graph(snapshot, ax, max_weight, starting_node=None):
+    """Visualize a single snapshot of the graph with edge opacity and color based on current weight."""
+    ax.clear()  # Clear the previous frame
+    pos = nx.spring_layout(snapshot, seed=42, weight=None)  # Fixed layout for consistency
+    
+    # Get edge weights for the current snapshot
+    edge_weights = np.array([snapshot[u][v]['weight'] for u, v in snapshot.edges()])
+
+    # Create a colormap for edge weights
+    cmap = plt.cm.plasma
+    min_weight = 0.1  # Minimum weight to ensure edges are visible
+    weight_factor = 3  # Adjust this factor to enhance color intensity
+    
+    # Minimum and maximum opacity values
+    min_opacity = 0.1  # Set a minimum opacity for visibility
+    max_opacity = 1.0  # Fully opaque for the highest weights
+
+    # Scale weights for color mapping
+    edge_weights = np.maximum(edge_weights, min_weight)  # Avoid weights below minimum
+    
+    # Normalize edge weights for color and opacity calculation
+    scaled_weights = edge_weights * weight_factor  # Scale weights for color mapping
+    
+    # Calculate opacity based on edge weights relative to max weight in the last snapshot
+    opacities = min_opacity + (edge_weights / max_weight) * (max_opacity - min_opacity)
+    
+    # Get colors from the colormap and apply opacity
+    edge_colors = [(*cmap(weight / max_weight)[:3], opacity) 
+                   for weight, opacity in zip(scaled_weights, opacities)]
+
+    # Draw edges with colors and transparency based on weights
+    nx.draw_networkx_edges(snapshot, pos, edge_color=edge_colors, width=2, ax=ax)
+
+    # Draw nodes, differentiating the starting node with a different color
+    node_colors = ['red' if node == starting_node else 'skyblue' for node in snapshot.nodes()]
+    nx.draw_networkx_nodes(snapshot, pos, node_color=node_colors, node_size=100, ax=ax)
+
+    # Turn off the axis
+    plt.axis('off')
+
+
+def animate_walks(snapshots, save_gif=True, filename="multiple_walks.gif", fps=5):
+    """Animate the snapshots of graph walks and save as a GIF if desired."""
+    # Create a figure for visualization
+    fig, ax = plt.subplots(figsize=(18, 8), facecolor='#3e3e3e')
+    last_snapshot = snapshots[-1]
+    max_weight = max([last_snapshot[u][v]['weight'] for u, v in last_snapshot.edges()])
+    starting_node = get_highest_degree_node(snapshots[0]) 
+    
+    # Update function to visualize each snapshot
+    def update(frame):
+        ax.clear()  # Clear the previous frame
+        visualize_graph(snapshots[frame], ax, max_weight,starting_node)  # Visualize the current snapshot
+        plt.title(f"Frame {frame + 1}", color='white')  # Update title with current step number
+    
+    # Create the animation
+    ani = FuncAnimation(fig, update, frames=len(snapshots), interval=300, repeat=False)
+
+    # Show or save the animation
+    if save_gif:
+        writer = PillowWriter(fps=fps)
+        ani.save(filename, writer=writer)
+        print(f"Animation saved as {filename}")
+    else:
+        plt.show()
